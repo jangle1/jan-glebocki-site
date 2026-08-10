@@ -1057,6 +1057,31 @@ body.modal-open { overflow: hidden; }
   transition: transform 180ms ease, background 180ms ease;
 }
 .coffee-cta:hover { transform: translateY(-2px); background: var(--accent-ink); color: #fff; }
+.hero-coffee-alt {
+  margin: 12px 0 0;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+.hero-coffee-alt a,
+.coffee-contact a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hero-coffee-alt a {
+  color: var(--text);
+  font-weight: 600;
+  border-bottom: 1px solid var(--line);
+  transition: color 160ms ease, border-color 160ms ease;
+}
+.hero-coffee-alt a:hover { color: var(--accent-ink); border-color: var(--accent-ink); }
+.li-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  display: block;
+}
+
 .coffee-contact {
   list-style: none;
   margin: clamp(30px, 4vw, 44px) auto 0;
