@@ -670,6 +670,17 @@ body.modal-open { overflow: hidden; }
   font-weight: 700;
   letter-spacing: -0.01em;
 }
+/* provenance for the numbers above */
+.case-note {
+  margin: clamp(22px, 3vw, 34px) 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+.case-note span { color: var(--accent-ink); font-weight: 700; }
+
 .case-copy {
   margin: 0;
   font-size: 14px;
@@ -702,6 +713,11 @@ body.modal-open { overflow: hidden; }
   transition: border-color 160ms ease;
 }
 .offer-card:hover { border-color: var(--accent); }
+/* the catch-all card reads as an invitation, not another service */
+.offer-card--more {
+  border-style: dashed;
+  border-color: var(--accent);
+}
 .offer-num {
   font-family: var(--f-pixel);
   font-size: 10px;
