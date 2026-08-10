@@ -322,10 +322,11 @@ button { font: inherit; }
   position: absolute;
   inset: 0;
   transform-style: preserve-3d;
-  will-change: transform;
 }
-.gal-ring.is-animating {
-  transition: transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
+/* the deck animates card by card, not as one rotating body */
+.gal-ring.is-animating .gal-card {
+  transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 420ms ease;
 }
 
 .gal-card {
@@ -342,24 +343,15 @@ button { font: inherit; }
   border: 1px solid var(--line);
   padding: 16px;
   backface-visibility: hidden;
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  transform-origin: 50% 50%;
+  will-change: transform;
 }
 .gal-card.is-front {
   border-color: var(--accent);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
   box-shadow: 0 16px 40px rgba(23, 21, 15, 0.16);
 }
 .gal-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-
-/* cards away from the front are dimmed by JS via --dim */
-.gal-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: var(--bg);
-  opacity: var(--dim, 0);
-  pointer-events: none;
-  transition: opacity 200ms linear;
-}
 
 @media (max-width: 560px) {
   .gal-stage { --card-w: clamp(165px, 52vw, 215px); --card-h: 318px; perspective: 720px; }
@@ -942,12 +934,21 @@ body.modal-open { overflow: hidden; }
 }
 @media (max-width: 900px) { .section--about { grid-template-columns: 1fr; } }
 
+/* the overlay paints the bitten-out edge cells in the page colour and draws
+   the ink border, so the photo reads as a ragged pixel cut-out */
 .about-photo {
   position: relative;
   aspect-ratio: 5 / 4;
-  border-radius: var(--r);
-  border: 1px solid var(--line);
+  border: none;
+  border-radius: 0;
   background: url('jan.jpg') center / cover no-repeat;
+}
+.about-photo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url('pixel/photo-frame.svg') center / 100% 100% no-repeat;
+  pointer-events: none;
 }
 .about-stamp {
   position: absolute;

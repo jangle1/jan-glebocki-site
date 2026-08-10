@@ -108,9 +108,10 @@ document.querySelectorAll('a[href^="#"]').forEach((a) => {
 if (location.hash.length > 1) openPanel(location.hash.slice(1), { focus: false });
 
 // ---------------------------------------------------------------------------
-// "Pick a card", a 3D ring carousel. Cards sit on a circle; the ring keeps
-// turning in one direction so it always completes full revolutions. Dragging,
-// the arrows and keyboard focus all steer it; interaction pauses the autoplay.
+// "Pick a card", a coverflow deck. The front card and its two neighbours stay
+// flat and readable; anything further back bends away into the depth. The
+// deck never rewinds, cards wrap around. Dragging, the arrows and keyboard
+// focus all steer it; interaction pauses the autoplay.
 // ---------------------------------------------------------------------------
 const stage = document.querySelector(".gal-stage");
 const ring = document.querySelector(".gal-ring");
@@ -118,85 +119,105 @@ const ring = document.querySelector(".gal-ring");
 if (stage && ring) {
   const cards = [...ring.querySelectorAll(".gal-card")];
   const count = cards.length;
-  const STEP = 360 / count;
-  const DRAG_THRESHOLD = 6; // px before a press counts as a drag, not a click
-  const DEG_PER_PX = 0.28;
+  const DRAG_THRESHOLD = 6;   // px before a press counts as a drag, not a click
+  const PX_PER_STEP = 190;    // drag distance that advances one card
   const AUTOPLAY_MS = 4200;
 
-  // `index` is unbounded, it keeps counting up so the ring never rewinds
-  let index = 0;
-  let angle = 0;
-  let radius = 320;
+  // `pos` is a continuous card index. It is unbounded, so the deck never
+  // rewinds; cards wrap around it.
+  let pos = 0;
+  let target = 0;
+  let metrics = { x1: 220, x2: 340 };
   let dragging = false;
   let dragged = false;
   let pointerId = null;
   let startX = 0;
-  let startAngle = 0;
+  let startPos = 0;
   let autoplayTimer = null;
   let paused = false;
 
+  // Depth profile by distance from the front. The first three cards stay flat
+  // and fully readable; only the ones behind them bend away.
+  const KNOTS = [
+    { d: 0, x: 0.0, z: 0, ry: 0, op: 1, sc: 1 },
+    { d: 1, x: 1.0, z: -70, ry: 4, op: 1, sc: 0.94 },
+    { d: 2, x: 1.42, z: -290, ry: 54, op: 0.5, sc: 0.88 },
+    { d: 3, x: 1.6, z: -430, ry: 66, op: 0, sc: 0.84 },
+  ];
+
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  const sample = (dist) => {
+    const clamped = Math.min(dist, 3);
+    const i = Math.min(Math.floor(clamped), 2);
+    const t = clamped - i;
+    const a = KNOTS[i];
+    const b = KNOTS[i + 1];
+    return {
+      x: lerp(a.x, b.x, t),
+      z: lerp(a.z, b.z, t),
+      ry: lerp(a.ry, b.ry, t),
+      op: lerp(a.op, b.op, t),
+      sc: lerp(a.sc, b.sc, t),
+    };
+  };
+
   const measure = () => {
     const w = cards[0].getBoundingClientRect().width || 220;
-    // radius that spaces n cards of width w evenly around the circle
-    const ideal = (w / 2 + 26) / Math.tan(Math.PI / count);
-    // on a narrow screen that radius throws the neighbouring cards off the
-    // edge, so cap it at whatever keeps them inside the stage
-    const stepRad = (2 * Math.PI) / count;
-    const fit =
-      (stage.clientWidth / 2 - (w / 2) * Math.abs(Math.cos(stepRad))) /
-      Math.sin(stepRad);
-    radius = Math.round(Math.max(140, Math.min(ideal, fit)));
-    cards.forEach((card, i) => {
-      card.style.transform = `rotateY(${i * STEP}deg) translateZ(${radius}px)`;
-    });
+    const half = stage.clientWidth / 2;
+    // neighbours sit as far out as the stage allows, but never further than
+    // one card width, so three cards always read as a row
+    metrics.x1 = Math.max(w * 0.52, Math.min(w * 1.06, half - w * 0.42));
+    metrics.x2 = metrics.x1 * 1.42;
     render();
   };
 
   const render = () => {
-    // slight downward tilt so the ring reads as a solid object, not a fan
-    ring.style.transform = `translateZ(${-radius}px) rotateX(-4deg) rotateY(${angle}deg)`;
-    const frontIndex = ((Math.round(-angle / STEP) % count) + count) % count;
+    const front = ((Math.round(pos) % count) + count) % count;
     cards.forEach((card, i) => {
-      // how square-on this card is to the viewer: 1 = front, -1 = behind
-      const facing = Math.cos(((i * STEP + angle) * Math.PI) / 180);
-      card.style.setProperty("--dim", (0.72 - 0.72 * Math.max(0, facing)).toFixed(3));
-      card.style.zIndex = String(Math.round(100 + facing * 100));
-      const isFront = i === frontIndex;
+      // shortest signed distance from the front slot, wrapping both ways
+      let rel = i - pos;
+      rel -= Math.round(rel / count) * count;
+      const dist = Math.abs(rel);
+      const dir = rel < 0 ? -1 : 1;
+      const s = sample(dist);
+      const px = s.x <= 1 ? s.x * metrics.x1 : metrics.x1 + (s.x - 1) * (metrics.x2 - metrics.x1);
+
+      card.style.transform =
+        `translateX(${(dir * px).toFixed(1)}px) translateZ(${s.z.toFixed(0)}px) ` +
+        `rotateY(${(-dir * s.ry).toFixed(1)}deg) scale(${s.sc.toFixed(3)})`;
+      card.style.opacity = s.op.toFixed(2);
+      card.style.zIndex = String(100 - Math.round(dist * 10));
+      card.style.pointerEvents = s.op < 0.2 ? "none" : "auto";
+
+      const isFront = i === front;
       card.classList.toggle("is-front", isFront);
-      // only the front card is a reachable link
       card.tabIndex = isFront ? 0 : -1;
       card.setAttribute("aria-hidden", isFront ? "false" : "true");
     });
   };
 
   const glide = (animated = true) => {
-    ring.classList.toggle("is-animating", animated);
-    angle = -index * STEP;
+    ring.classList.toggle("is-animating", animated && !reducedMotion);
+    pos = target;
     render();
   };
 
-  const goTo = (next) => {
-    index = next;
-    glide(true);
-  };
+  const goTo = (next) => { target = next; glide(true); };
 
-  // rotate to whichever card is nearest the given list position
   const goToCard = (cardIndex) => {
-    const current = ((index % count) + count) % count;
+    const current = ((Math.round(target) % count) + count) % count;
     let delta = cardIndex - current;
     if (delta > count / 2) delta -= count;
     if (delta < -count / 2) delta += count;
-    goTo(index + delta);
+    goTo(Math.round(target) + delta);
   };
 
   // --- autoplay ---
-  const stopAutoplay = () => {
-    clearInterval(autoplayTimer);
-    autoplayTimer = null;
-  };
+  const stopAutoplay = () => { clearInterval(autoplayTimer); autoplayTimer = null; };
   const startAutoplay = () => {
     if (autoplayTimer || paused || reducedMotion) return;
-    autoplayTimer = setInterval(() => goTo(index + 1), AUTOPLAY_MS);
+    autoplayTimer = setInterval(() => goTo(target + 1), AUTOPLAY_MS);
   };
   const pause = () => { paused = true; stopAutoplay(); };
   const resume = () => { paused = false; startAutoplay(); };
@@ -219,7 +240,7 @@ if (stage && ring) {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     pointerId = e.pointerId;
     startX = e.clientX;
-    startAngle = angle;
+    startPos = pos;
     dragging = true;
     dragged = false;
     pause();
@@ -236,7 +257,7 @@ if (stage && ring) {
       // only now: capturing earlier would retarget the click away from the card
       try { stage.setPointerCapture(pointerId); } catch { /* not capturable */ }
     }
-    angle = startAngle + dx * DEG_PER_PX;
+    pos = startPos - dx / PX_PER_STEP;
     render();
   });
 
@@ -249,9 +270,7 @@ if (stage && ring) {
     pointerId = null;
     stage.classList.remove("is-dragging");
     if (dragged) {
-      // snap to the nearest card, keeping the unbounded index in step
-      index = Math.round(-angle / STEP);
-      glide(true);
+      goTo(Math.round(pos));
       requestAnimationFrame(() => { dragged = false; });
     }
     resume();
@@ -279,8 +298,7 @@ if (stage && ring) {
 
   document.querySelectorAll(".gal-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      goTo(index + (Number(btn.dataset.dir) || 1));
-      // nudge the timer so it doesn't fire straight after a manual move
+      goTo(target + (Number(btn.dataset.dir) || 1));
       if (!paused) { stopAutoplay(); startAutoplay(); }
     });
   });

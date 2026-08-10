@@ -646,3 +646,87 @@ def build_parallax():
 with open(os.path.join(OUT, "parallax.svg"), "w") as f:
     f.write(build_parallax())
 print("parallax.svg  200x44")
+
+
+# ------------------------------------------- ragged pixel frame for the photo
+
+def build_photo_frame(W=50, H=40, seed=17):
+    """A stepped silhouette plus a matching 2-cell border.
+
+    Both files come from the same grid, so the mask and the frame line up
+    exactly however the element is scaled.
+    """
+    state = {"s": seed}
+
+    def rnd():
+        state["s"] = (state["s"] * 1103515245 + 12345) & 0x7fffffff
+        return state["s"] / 0x7fffffff
+
+    inside = [[True] * W for _ in range(H)]
+
+    def bite(x, y, w, h):
+        for yy in range(y, min(y + h, H)):
+            for xx in range(x, min(x + w, W)):
+                if 0 <= xx < W and 0 <= yy < H:
+                    inside[yy][xx] = False
+
+    # ragged top and bottom edges
+    for x in range(W):
+        if rnd() > 0.62:
+            bite(x, 0, 1, 1 if rnd() > 0.35 else 2)
+        if rnd() > 0.62:
+            depth = 1 if rnd() > 0.35 else 2
+            bite(x, H - depth, 1, depth)
+    # ragged left and right edges
+    for y in range(H):
+        if rnd() > 0.62:
+            bite(0, y, 1 if rnd() > 0.35 else 2, 1)
+        if rnd() > 0.62:
+            depth = 1 if rnd() > 0.35 else 2
+            bite(W - depth, y, depth, 1)
+    # stepped corners, so the shape reads as deliberate pixel art
+    for cx, cy in ((0, 0), (W - 3, 0), (0, H - 3), (W - 3, H - 3)):
+        bite(cx, cy, 3, 1)
+        bite(cx, cy, 1, 3)
+        if cx:
+            bite(cx + 2, cy, 1, 2)
+            bite(cx, cy + 2, 3, 1) if cy else None
+
+    def is_in(x, y):
+        return 0 <= x < W and 0 <= y < H and inside[y][x]
+
+    # border = the two innermost rings of the silhouette
+    ring1 = {(x, y) for y in range(H) for x in range(W)
+             if inside[y][x] and not all(is_in(x + dx, y + dy)
+                                         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))}
+    ring2 = {(x, y) for y in range(H) for x in range(W)
+             if inside[y][x] and (x, y) not in ring1
+             and any((x + dx, y + dy) in ring1
+                     for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)))}
+
+    def svg(cells, colour):
+        rects = "".join(
+            f'<rect x="{x}" y="{y}" width="1" height="1" fill="{colour}"/>'
+            for x, y in sorted(cells))
+        return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
+                f'preserveAspectRatio="none" shape-rendering="crispEdges">{rects}</svg>')
+
+    # One overlay does both jobs: the bitten-out cells are painted in the page
+    # colour so the photo appears to have ragged edges, and the two inner rings
+    # form the border. A CSS mask would be cleaner, but Chrome refuses to load
+    # mask images from file:// (opaque origin) and hides the element entirely.
+    outside = [(x, y) for y in range(H) for x in range(W) if not inside[y][x]]
+    rects = "".join(
+        f'<rect x="{x}" y="{y}" width="1" height="1" fill="#f4f0e6"/>'
+        for x, y in outside)
+    rects += "".join(
+        f'<rect x="{x}" y="{y}" width="1" height="1" fill="#1c1a15"/>'
+        for x, y in sorted(ring1 | ring2))
+    out = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
+           f'preserveAspectRatio="none" shape-rendering="crispEdges">{rects}</svg>')
+    with open(os.path.join(OUT, "photo-frame.svg"), "w") as f:
+        f.write(out)
+    print(f"photo-frame.svg  {W}x{H}  ({len(outside)} bitten, {len(ring1 | ring2)} border)")
+
+
+build_photo_frame()
