@@ -1,10 +1,9 @@
 # Client logos
 
-Drop a file here and the site picks it up automatically. Expected names:
+These three are served from here instead of a favicon lookup, because the
+lookup returned the wrong mark for them (silkline.com is a parked domain,
+gralio is on .ai not .com, and Auchan's Polish favicon resolved to a generic
+globe).
 
-- `gralio.png`
-- `silkline.png`
-- `auchan.png`
-
-PNG or SVG, square-ish, transparent or white background. Until a file exists
-the tile falls back to the site's favicon lookup, so nothing breaks.
+Overwrite any file to swap a logo. Keep the same filename, square-ish,
+PNG or SVG.
