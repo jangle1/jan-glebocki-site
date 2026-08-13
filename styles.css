@@ -274,6 +274,26 @@ button { font: inherit; }
   gap: 16px;
   margin-bottom: 18px;
 }
+.gallery-head-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.gallery-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.gallery-hint-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  background: var(--accent);
+  animation: pixel-blink 1.4s steps(1, end) infinite;
+}
 .gallery-eyebrow {
   font-family: var(--f-pixel);
   font-size: 11px;
@@ -345,11 +365,17 @@ button { font: inherit; }
   backface-visibility: hidden;
   transform-origin: 50% 50%;
   will-change: transform;
+  cursor: pointer;
 }
 .gal-card.is-front {
   border-color: var(--accent);
-  transition: border-color 200ms ease, box-shadow 200ms ease;
+  transition: border-color 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
   box-shadow: 0 16px 40px rgba(23, 21, 15, 0.16);
+}
+.gal-card.is-front:hover,
+.gal-card.is-front:focus-visible {
+  background-color: #fff;
+  box-shadow: 0 22px 52px rgba(23, 21, 15, 0.26);
 }
 .gal-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
@@ -366,6 +392,8 @@ button { font: inherit; }
   color: var(--text-muted);
 }
 .gal-card.is-front .gal-num { color: var(--accent-ink); }
+.gal-card.is-front:hover .gal-label > :first-child,
+.gal-card.is-front:focus-visible .gal-label > :first-child { color: var(--accent-ink); }
 .gal-art {
   flex: 1;
   display: grid;
@@ -392,20 +420,51 @@ button { font: inherit; }
   font-size: 12.5px;
   color: var(--text-muted);
 }
-.gal-arrow {
+/* a labelled button, not a bare chevron: people were not reading the cards
+   as clickable at all */
+.gal-open {
   position: absolute;
-  right: 14px;
+  right: 16px;
   bottom: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
   font-family: var(--f-pixel);
-  font-size: 12px;
-  color: var(--accent-ink);
+  font-size: 8px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
   opacity: 0;
-  transform: translateX(-6px);
-  transition: opacity 160ms ease, transform 160ms ease;
+  transform: translateY(4px);
+  transition: opacity 200ms ease, transform 200ms ease,
+              background-color 160ms ease, color 160ms ease, border-color 160ms ease;
 }
-.gal-card.is-front .gal-arrow {
+.gal-open b {
+  font-weight: 400;
+  animation: nudge 1.6s ease-in-out infinite;
+}
+@keyframes nudge {
+  0%, 60%, 100% { transform: translateX(0); }
+  75% { transform: translateX(3px); }
+}
+.gal-card.is-front .gal-open {
   opacity: 1;
-  transform: translateX(0);
+  transform: translateY(0);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.gal-card.is-front:hover .gal-open,
+.gal-card.is-front:focus-visible .gal-open {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gal-open b { animation: none; }
 }
 
 /* -----------------------------------------------------------
